@@ -7,6 +7,6 @@ public class Anomymization {
     MaskingFunctions maskingFunctions = new MaskingFunctions();
 
     public void generalization() {
-
+        //maskingFunctions.generalize(...)
     }
 }
