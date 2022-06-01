@@ -3,6 +3,7 @@ package anonymization;
 import org.apache.flink.table.api.Table;
 
 import java.util.List;
+import common.Tree;
 
 public class MaskingFunctions {
 
