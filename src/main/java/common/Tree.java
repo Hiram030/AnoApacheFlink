@@ -1,5 +1,10 @@
 package common;
 
+import java.util.LinkedList;
+import java.util.List;
+import java.util.NoSuchElementException;
+import java.util.Queue;
+
 /**
  * @param <T>
  * Tree data structure
@@ -44,5 +49,23 @@ public class Tree<T> {
      */
     public void printTree() {
         printNode(this.root, "  ");
+    }
+
+    /**
+     * find node of the data using BFS
+     * @param value
+     * @return
+     */
+    public Node<T> findNode(T value) {
+        Queue<Node<T>> Q = new LinkedList<>();
+        Q.add(root);
+        while (!Q.isEmpty()) {
+            Node<T> node = Q.poll();
+            if (node.getData() == value)
+                return node;
+            List<Node<T>> children = node.getChildren();
+            Q.addAll(children);
+        }
+        throw new NoSuchElementException("The value " + value + "was not found in the tree.");
     }
 }

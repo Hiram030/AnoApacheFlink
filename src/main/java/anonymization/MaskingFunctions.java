@@ -1,8 +1,10 @@
 package anonymization;
 
+import common.Node;
 import common.Tree;
 import org.apache.flink.streaming.api.datastream.DataStream;
 import org.apache.flink.table.api.DataTypes;
+import org.apache.flink.table.api.Schema;
 import org.apache.flink.table.api.Table;
 import org.apache.flink.table.types.DataType;
 
@@ -32,13 +34,30 @@ public class MaskingFunctions {
     }
 
     //Thai
-    public String bucketize() {
+    public String bucketize([12, 23, 43, 34]) {
         return "";
     }
-    public String generalize(Table column, Tree tree) {
-        return "";
+
+    /**
+     * generalize a value according to the predefined generalization tree
+     * @param value value to be generalized
+     * @param tree the hierachical generalization tree
+     * @param level the higher the level, the more data lost
+     * @return genralized value
+     */
+    public String generalize(String value, Tree<String> tree, int level) {
+        if (level < 0) {
+            throw new IllegalArgumentException("Level must be positive");
+        }
+        Node<String> node = tree.findNode(value);
+        for (int i = 0; i < level; i++) {
+            node = node.getParent();
+            if (node == null)
+                throw new IllegalArgumentException("Level is bigger than the tree height.");
+        }
+        return node.getData();
     }
-    public Table shuffle(Table column) {
+    public Table shuffle() {
         return column.orderBy(rand());
     }
     public void average(Table column) {
