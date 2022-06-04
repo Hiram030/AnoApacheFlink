@@ -65,12 +65,7 @@ public class DataStreamJob {
 				new Person("Wilma", 35),
 				new Person("Pebbles", 2));
 
-		DataStream<Person> adults = flintstones.filter(new FilterFunction<Person>() {
-			@Override
-			public boolean filter(Person person) throws Exception {
-				return person.age >= 18;
-			}
-		});
+		DataStream<Person> adults = flintstones.filter((FilterFunction<Person>) person -> person.age >= 18);
 
 		adults.print();
 

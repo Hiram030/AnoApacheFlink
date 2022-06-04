@@ -34,9 +34,9 @@ public class MaskingFunctions {
     }
 
     //Thai
-    public String bucketize([12, 23, 43, 34]) {
-        return "";
-    }
+//    public Number bucketize() {
+//        return "";
+//    }
 
     /**
      * generalize a value according to the predefined generalization tree
@@ -57,9 +57,9 @@ public class MaskingFunctions {
         }
         return node.getData();
     }
-    public Table shuffle() {
-        return column.orderBy(rand());
-    }
+//    public Table shuffle() {
+//        return column.orderBy(rand());
+//    }
     public void average(Table column) {
 //        DataStream<DataType> list = column.
 //        DataTypes.of(column)
