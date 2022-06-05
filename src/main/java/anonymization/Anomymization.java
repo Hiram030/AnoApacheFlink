@@ -2,6 +2,8 @@ package anonymization;
 
 import org.apache.flink.table.api.*;
 
+import static org.apache.flink.table.api.Expressions.$;
+
 public class Anomymization {
 
     private final MaskingFunctions maskingFunctions = new MaskingFunctions();
@@ -48,6 +50,17 @@ public class Anomymization {
     public void generalization() {
         //maskingFunctions.generalize(...)
     }
+
+    public void shuffle(String columnName) {
+        Table column = data.select($(columnName)).orderBy(Expressions.rand());
+        Table result = data.dropColumns($(columnName)).addOrReplaceColumns($(columnName));
+        result.execute().print();
+    }
+
+    public void average(String columnName, int n) {
+        Table column = data.select($("id"),$(columnName));
+    }
+
     public Table getData() { return data;}
 
     /**
