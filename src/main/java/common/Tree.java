@@ -1,5 +1,8 @@
 package common;
 
+import java.io.BufferedReader;
+import java.io.FileNotFoundException;
+import java.io.FileReader;
 import java.util.LinkedList;
 import java.util.List;
 import java.util.NoSuchElementException;
@@ -18,6 +21,12 @@ public class Tree<T> {
 
     public Tree(String name) {
         this.name = name;
+    }
+
+    public void convert(String filename) throws FileNotFoundException {
+        String filepath = "trees/"+filename;
+        BufferedReader bufferedReader = new BufferedReader(new FileReader(filepath));
+
     }
 
     public Node<T> getRoot() {

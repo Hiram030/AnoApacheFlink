@@ -16,7 +16,7 @@ import static org.apache.flink.table.api.Expressions.*;
 public class MaskingFunctions {
 
     //Yannick
-    public String supress(Table column, List<Integer> indices){
+    public String supress(String value){
         return "xxxxx";
     }
 
