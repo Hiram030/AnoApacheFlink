@@ -57,8 +57,7 @@ under the License.
 		<dependency>
 			<groupId>org.apache.flink</groupId>
 			<artifactId>flink-table-api-java</artifactId>
-			<version>${flink.version}</version>
-			<scope>compile</scope>
+			<version>1.16-SNAPSHOT</version>
 		</dependency>
 		<dependency>
 			<groupId>org.apache.flink</groupId>
@@ -66,13 +65,13 @@ under the License.
 			<version>${flink.version}</version>
 			<scope>compile</scope>
 		</dependency>
-		<!-- https://mvnrepository.com/artifact/org.apache.flink/flink-table-api-java-bridge -->
-		<dependency>
-			<groupId>org.apache.flink</groupId>
-			<artifactId>flink-table-api-java-bridge</artifactId>
-			<version>1.15.0</version>
-			<scope>compile</scope>
-		</dependency>
+<!--		&lt;!&ndash; https://mvnrepository.com/artifact/org.apache.flink/flink-table-api-java-bridge &ndash;&gt;-->
+<!--		<dependency>-->
+<!--			<groupId>org.apache.flink</groupId>-->
+<!--			<artifactId>flink-table-api-java-bridge</artifactId>-->
+<!--			<version>1.15.0</version>-->
+<!--			<scope>compile</scope>-->
+<!--		</dependency>-->
 
 
 		<!-- Add connector dependencies here. They must be in the default scope (compile). -->
@@ -126,7 +125,7 @@ under the License.
 			<version>1.16-SNAPSHOT</version>
 			<scope>test</scope>
 		</dependency>
-	</dependencies>
+    </dependencies>
 
 	<build>
 		<plugins>

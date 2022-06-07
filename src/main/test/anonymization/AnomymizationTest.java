@@ -16,7 +16,7 @@ class AnomymizationTest {
     @BeforeEach
     public void init() {
         Schema schema = Schema.newBuilder()
-                .column("id", DataTypes.BIGINT())
+                .column("subject_id", DataTypes.BIGINT())
                 .column("gender", DataTypes.STRING())
                 .column("age", DataTypes.INT())
                 .column("name", DataTypes.STRING())
@@ -35,5 +35,6 @@ class AnomymizationTest {
     @Test
     void shuffle() {
         anomymization.shuffle("name");
+        anomymization.getData().execute().print();
     }
 }
