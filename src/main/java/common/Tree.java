@@ -1,35 +1,71 @@
 package common;
 
 import java.io.BufferedReader;
-import java.io.FileNotFoundException;
 import java.io.FileReader;
-import java.util.LinkedList;
-import java.util.List;
-import java.util.NoSuchElementException;
-import java.util.Queue;
+import java.io.IOException;
+import java.io.Serializable;
+import java.util.*;
 
 /**
- * @param <T>
- * Tree data structure
- * The root has to be set, example:
- *      Tree<String> tree = new Tree("tree name");
- *      tree.setRoot(new Node("root"));
+ * Tree data structure for generalization
  */
-public class Tree<T> {
-    private Node<T> root = null;
+public class Tree implements Serializable{
+    private static final long serialVersionUID = 1L;
+    private Node root = null;
     private String name;
 
     public Tree(String name) {
         this.name = name;
     }
 
-    public void convert(String filename) throws FileNotFoundException {
+    /**
+     * convert a file in folder trees to this Tree data structure
+     * Text File convention: each line represents a node and the first line is the root.
+     * Parent - Child relationship cam be represented by having the following lines having more spaces on the left than the previous line
+     * @param filename
+     */
+    public void convert(String filename)  {
         String filepath = "trees/"+filename;
-        BufferedReader bufferedReader = new BufferedReader(new FileReader(filepath));
+        try {
+            BufferedReader bufferedReader = new BufferedReader(new FileReader(filepath));
+            String line = bufferedReader.readLine();
+            if(line == null)
+                throw new IllegalArgumentException("File is empty!");
 
+            List<Node> previousNodes = new LinkedList<>(); //remember the parent nodes
+            Node root = new Node(line);
+            this.setRoot((root));
+            previousNodes.add(root);
+            line = bufferedReader.readLine();
+
+            while (line != null) {
+                int spaceCounter = 0;
+                //count spaces before words
+                for (int i = 0; i < line.length(); i++) {
+                    if (line.charAt(i) == ' ')
+                        spaceCounter++;
+                    else
+                        break;
+                }
+                if (spaceCounter == 0) {
+                    throw new IllegalArgumentException("There can only be 1 root.");
+                }
+                Node currentNode = new Node(line.substring(spaceCounter));
+                if (spaceCounter > previousNodes.size()) { //in case more than spaces than needed
+                    spaceCounter = previousNodes.size();
+                }
+                previousNodes.subList(0, spaceCounter); //remove other siblings
+                Node parent = previousNodes.get(spaceCounter - 1); //get last parent node
+                parent.addChild(currentNode);
+                previousNodes.add(currentNode);
+                line = bufferedReader.readLine();
+            }
+        } catch (IOException e) {
+            e.printStackTrace();
+        }
     }
 
-    public Node<T> getRoot() {
+    public Node getRoot() {
         return root;
     }
 
@@ -37,7 +73,7 @@ public class Tree<T> {
         return name;
     }
 
-    public void setRoot(Node<T> root) {
+    public void setRoot(Node root) {
         this.root = root;
     }
 
@@ -48,7 +84,7 @@ public class Tree<T> {
     /**
      * recursive helper function for printTree()
      */
-    private void printNode(Node<T> node, String appender) {
+    private void printNode(Node node, String appender) {
         System.out.println(appender + node.getData());
         node.getChildren().forEach(each ->  printNode(each, appender + "  "));
     }
@@ -65,16 +101,16 @@ public class Tree<T> {
      * @param value
      * @return
      */
-    public Node<T> findNode(T value) {
-        Queue<Node<T>> Q = new LinkedList<>();
+    public Node findNode(String value) {
+        Queue<Node> Q = new LinkedList<>();
         Q.add(root);
         while (!Q.isEmpty()) {
-            Node<T> node = Q.poll();
-            if (node.getData() == value)
+            Node node = Q.poll();
+            if (value.equals(node.getData()))
                 return node;
-            List<Node<T>> children = node.getChildren();
+            List<Node> children = node.getChildren();
             Q.addAll(children);
         }
-        throw new NoSuchElementException("The value " + value + "was not found in the tree.");
+        throw new NoSuchElementException("The value " + value + " was not found in the tree.");
     }
 }

@@ -71,6 +71,7 @@ public class MaskingFunctions {
         int ceil = floor + step;
         return floor + "-" + ceil;
     }
+
     /**
      * generalize a value according to the predefined generalization tree
      * @param value value to be generalized
@@ -78,11 +79,11 @@ public class MaskingFunctions {
      * @param level the higher the level, the more data lost
      * @return genralized value
      */
-    public String generalize(String value, Tree<String> tree, int level) {
+    public String generalize(String value, Tree tree, int level) {
         if (level < 0) {
             throw new IllegalArgumentException("Level must be positive");
         }
-        Node<String> node = tree.findNode(value);
+        Node node = tree.findNode(value);
         for (int i = 0; i < level; i++) {
             node = node.getParent();
             if (node == null)

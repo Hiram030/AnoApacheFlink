@@ -1,43 +1,44 @@
 package common;
 
+import java.io.Serializable;
 import java.util.LinkedList;
 import java.util.List;
 
 /**
- * @param <T>
  * actual content stored in data
  */
-public class Node<T> {
-    private T data;
-    List<Node<T>> children = new LinkedList<>();
-    Node<T> parent = null;
+public class Node implements Serializable {
+    private static final long serialVersionUID = 1L;
+    private String data;
+    List<Node> children = new LinkedList<>();
+    Node parent = null;
 
-    public Node(T data) {
+    public Node(String data) {
         this.data = data;
     }
 
-    public void addChild(Node<T> child) {
+    public void addChild(Node child) {
         this.children.add((child));
-        child.setParent(parent);
+        child.setParent(this);
     }
 
-    private void setParent(Node<T> parent) {
+    private void setParent(Node parent) {
         this.parent = parent;
     }
 
-    public List<Node<T>> getChildren() {
+    public List<Node> getChildren() {
         return children;
     }
 
-    public Node<T> getParent() {
+    public Node getParent() {
         return parent;
     }
 
-    public T getData() {
+    public String getData() {
         return data;
     }
 
-    public void setData(T data) {
+    public void setData(String data) {
         this.data = data;
     }
 }

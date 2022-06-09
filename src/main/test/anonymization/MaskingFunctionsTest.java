@@ -68,7 +68,7 @@ class MaskingFunctionsTest {
 //        Tree<String> tree = new Tree<>("city");
 //        Node<String> world = new Node<>("World");
 //        tree.setRoot(world);
-//        world.addChild();new Node<>("Europe");
+//        world.addChild(new Node<>("Europe"));
 //        Node<String> asia = new Node<>("Asia");
 //        Node<String> australia = new Node<>("Australia");
 //    }

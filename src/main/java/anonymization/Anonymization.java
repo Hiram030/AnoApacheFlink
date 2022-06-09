@@ -1,25 +1,20 @@
 package anonymization;
 
+import MapFunctions.Bucketizing;
+import MapFunctions.Generalization;
 import common.Tree;
-import org.apache.flink.api.common.operators.Order;
-import org.apache.flink.table.annotation.DataTypeHint;
-import org.apache.flink.table.annotation.FunctionHint;
 import org.apache.flink.table.api.*;
-import org.apache.flink.table.catalog.DataTypeFactory;
 import org.apache.flink.table.functions.ScalarFunction;
-import org.apache.flink.table.types.inference.TypeInference;
-import org.apache.flink.types.Row;
 
 import static org.apache.flink.table.api.Expressions.*;
 
-public class Anomymization {
+public class Anonymization {
 
-    private final MaskingFunctions maskingFunctions = new MaskingFunctions();
     private final Schema schema;
     private final String filePath;
     private Table data;
 
-    public Anomymization(String filePath, Schema schema) {
+    public Anonymization(String filePath, Schema schema) {
         this.schema = schema;
         this.filePath = filePath;
     }
@@ -52,11 +47,7 @@ public class Anomymization {
 //                .build());
 
         //get table and add id column
-        data = tEnv.from("data").select(uuid().as("id"), $("*"));
-    }
-
-    public void generalization(String columnName, Tree<String> tree) {
-        //maskingFunctions.generalize(...)
+        data = tEnv.from("data").select($("*"));
     }
 
     //helper map function for shuffle, add row number in chronological order
@@ -91,8 +82,39 @@ public class Anomymization {
                 .renameColumns($("new").as("name"));
     }
 
-    public void average(String columnName, int n) {
-        Table column = data.select($("id"),$(columnName));
+    /**
+     * generalize a column according to the generalization tree and the level
+     * @param columnName
+     * @param tree can be created by using Tree.convert([fileName]) to convert a text file to a Tree class
+     *
+     * @param level
+     * @return
+     */
+    public Table generalize(String columnName, Tree tree, int level) {
+        if (level <= 0)
+            throw new IllegalArgumentException("Step must be greater than 0.");
+        data = data.select($("*"), call(new Generalization(tree, level), $(columnName)).as("new_"+columnName));
+        return data;
+    }
+
+    /**
+     * bucketize all values in the given column, the bucketized column will be added to the table data, named as new_[columnName]
+     * @param columnName
+     * @param step
+     * @return
+     */
+    public Table bucketize(String columnName, int step) {
+        if (step <= 0)
+            throw new IllegalArgumentException("Step must be greater than 0.");
+        data = data.select($("*"), call(new Bucketizing(step), $(columnName)).as("new_"+columnName));
+        return data;
+    }
+
+    public Table joinTables(Table t1, Table t2, String columnName1, String columnName2) {
+        return t1
+                .join(t2).where($(columnName1).isEqual($(columnName2)))
+                .dropColumns($(columnName2))
+                .orderBy($(columnName1).asc());
     }
 
     public Table getData() { return data;}
