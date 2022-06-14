@@ -1,10 +1,11 @@
 package anonymization;
 
-import MapFunctions.Bucketizing;
-import MapFunctions.Generalization;
+import MapFunctions.*;
 import common.Tree;
 import org.apache.flink.table.api.*;
 import org.apache.flink.table.functions.ScalarFunction;
+
+import java.util.Map;
 
 import static org.apache.flink.table.api.Expressions.*;
 
@@ -110,11 +111,58 @@ public class Anonymization {
         return data;
     }
 
+    public Table suppress(String columnName) {
+        return data.select($("*"), call(new Suppression(), $(columnName)).as("new_"+columnName));
+    }
+
+    public Table blurring(String columnName) {
+        return data.select($("*"), call(new Blurring(), $(columnName)).as("new_"+columnName));
+    }
+
+    public Table tokenize(String columnName) {
+        return data.select($("*"), $(columnName).sha256().as("new_"+columnName));
+    }
+
+//    public Table addNoise(String columnName, double multiplier) {
+//        Double newMultiplier = new Double(multiplier);
+//        data = data.select($("*"), ($(columnName)*multiplier).as("new_"+columnName));
+//        return data;
+//    }
+
+    public Table substitute(String columnName, Map<?,?> map) {
+        return data.select($("*"), call(new Substitution(map), $(columnName)));
+    }
+
+    public Table average(String columnName, double deviation) {
+        Table avg = data.select($(columnName).avg().as("avg"));
+        Table result = data.leftOuterJoin(avg);
+        return result.select($("*"), call(new Averaging(deviation), $("avg")).as("new_" + columnName))
+                .dropColumns($("avg"));
+    }
+
+    /**
+     * aggregate column1 based on column2
+     * @param columnName1
+     * @return
+     */
+    public Table aggregate(String columnName1, String columnName2) {
+        Table sum = data
+                .groupBy($(columnName2))
+                .select($(columnName2).as("new_"+columnName2), $(columnName1).sum().as("new_"+columnName1));
+        return joinTables(data, sum, columnName2, "new_"+columnName2);
+    }
+
+    public Table UMicroaggregation(String columnName, int n) {
+        Table result = data
+                .window(Over.orderBy($(columnName)).as("w"))
+                .select($("*"), $(columnName).avg().over($("w")));
+        return result;
+    }
+
     public Table joinTables(Table t1, Table t2, String columnName1, String columnName2) {
         return t1
                 .join(t2).where($(columnName1).isEqual($(columnName2)))
-                .dropColumns($(columnName2))
-                .orderBy($(columnName1).asc());
+                .dropColumns($(columnName2));
     }
 
     public Table getData() { return data;}

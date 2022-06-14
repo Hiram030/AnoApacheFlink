@@ -19,7 +19,7 @@ class MaskingFunctionsTest {
     @Test
     void supress() {
         String value = "hello";
-        assert "xxxxx" == maskingFunctions.supress(value);
+        assert "xxxxx" == maskingFunctions.suppress(value);
     }
 
     @Test

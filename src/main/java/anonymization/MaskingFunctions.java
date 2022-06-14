@@ -26,7 +26,7 @@ import static org.apache.flink.table.api.Expressions.*;
 public class MaskingFunctions {
 
 
-    public String supress(Object value){
+    public String suppress(Object value){
         return "xxxxx";
     }
 
