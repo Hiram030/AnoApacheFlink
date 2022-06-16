@@ -107,8 +107,8 @@ public class Anonymization {
     public Table bucketize(String columnName, int step) {
         if (step <= 0)
             throw new IllegalArgumentException("Step must be greater than 0.");
-        data = data.select($("*"), call(new Bucketizing(step), $(columnName)).as("new_"+columnName));
-        return data;
+        return data.select($("*"), call(new Bucketizing(step), $(columnName)).as("new_"+columnName));
+
     }
 
     public Table suppress(String columnName) {
@@ -123,14 +123,16 @@ public class Anonymization {
         return data.select($("*"), $(columnName).sha256().as("new_"+columnName));
     }
 
-//    public Table addNoise(String columnName, double multiplier) {
-//        Double newMultiplier = new Double(multiplier);
-//        data = data.select($("*"), ($(columnName)*multiplier).as("new_"+columnName));
-//        return data;
-//    }
+    public Table addNoise(String columnName, double noise) {
+        return data.select($("*"), call(new NoiseAdding(noise), $(columnName)).as("new_" + columnName));
+    }
 
     public Table substitute(String columnName, Map<?,?> map) {
-        return data.select($("*"), call(new Substitution(map), $(columnName)));
+        return data.select($("*"), call(new Substitution(map), $(columnName)).as("new_" + columnName));
+    }
+
+    public Table conditionalSubstitute(String columnName, String conditionalColumn, Map<?, Map<?, ?>> map) {
+        return data.select($("*"), call(new ConditionalSubstitution(map), $(columnName), $(conditionalColumn)).as("new_" + columnName));
     }
 
     public Table average(String columnName, double deviation) {

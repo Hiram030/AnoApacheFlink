@@ -91,13 +91,15 @@ class AnonymizationTest {
 
     @Test
     void addNoise() {
+        anonymization.addNoise("age", 0.1).execute().print();
     }
 
     @Test
     void substitute() {
         Map<String, String> map = new HashMap<>();
         map.put("M", "F");
-        anonymization.substitute("gender", map);
+        map.put("F", "M");
+        anonymization.substitute("gender", map).execute().print();
     }
     @Test
     void average() {
@@ -112,4 +114,5 @@ class AnonymizationTest {
     void UMicroaggregation() {
         anonymization.UMicroaggregation("age", 5).execute().print();
     }
+
 }
