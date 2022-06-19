@@ -14,6 +14,8 @@ public class Anonymization {
     private final Schema schema;
     private final String filePath;
     private Table data;
+    private TableEnvironment tEnv;
+    private boolean buildTime = false;
 
     public Anonymization(String filePath, Schema schema) {
         this.schema = schema;
@@ -28,7 +30,7 @@ public class Anonymization {
                 .newInstance()
                 .inBatchMode()
                 .build();
-        TableEnvironment tEnv = TableEnvironment.create(settings);
+        tEnv = TableEnvironment.create(settings);
         //source
         tEnv.createTemporaryTable("data", TableDescriptor.forConnector("filesystem")
             .schema(schema)
@@ -49,6 +51,27 @@ public class Anonymization {
 
         //get table and add id column
         data = tEnv.from("data").select($("*"));
+    }
+
+    /**
+     * helper function for UMikroaggregation
+     */
+    private void buildTimeTable() {
+        if(buildTime)
+            return;
+        Schema newSchema = Schema.newBuilder()
+                .fromSchema(schema)
+                .columnByExpression("proc_time", "PROCTIME()")
+                .build();
+        tEnv.createTemporaryTable("procdata", TableDescriptor.forConnector("filesystem")
+                .schema(newSchema)
+                .option("path", filePath)
+                .format(FormatDescriptor.forFormat("csv")
+                        .option("ignore-parse-error", "true")
+                        .option("disable-quote-character", "true")
+                        .build())
+                .build());
+        buildTime = true;
     }
 
     //helper map function for shuffle, add row number in chronological order
@@ -155,9 +178,21 @@ public class Anonymization {
     }
 
     public Table UMicroaggregation(String columnName, int n) {
+//        buildTimeTable();
+//        Table procData = tEnv.from("procdata");
+//        Table result = procData
+//                .window(Over.orderBy($("proc_time")).preceding(rowInterval(n)).as("w"))
+//                .select($("*"), $(columnName).avg().over($("w")).as("new_"+columnName))
+//                .orderBy($("new_"+columnName));
+        Table temp = data
+                .orderBy($(columnName))
+                .joinLateral(call(new UMikroAggregation(n), $(columnName), $("id")))
+                //calculated average and ids
+                .select($("d").as("new_"+columnName), $("new_id"));
         Table result = data
-                .window(Over.orderBy($(columnName)).as("w"))
-                .select($("*"), $(columnName).avg().over($("w")));
+                .join(temp).where($("id").isEqual($("new_id")))
+                .orderBy($("id"))
+                .dropColumns($("new_id"));
         return result;
     }
 
