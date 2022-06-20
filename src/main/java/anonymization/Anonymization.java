@@ -53,26 +53,26 @@ public class Anonymization {
         data = tEnv.from("data").select($("*"));
     }
 
-    /**
-     * helper function for UMikroaggregation
-     */
-    private void buildTimeTable() {
-        if(buildTime)
-            return;
-        Schema newSchema = Schema.newBuilder()
-                .fromSchema(schema)
-                .columnByExpression("proc_time", "PROCTIME()")
-                .build();
-        tEnv.createTemporaryTable("procdata", TableDescriptor.forConnector("filesystem")
-                .schema(newSchema)
-                .option("path", filePath)
-                .format(FormatDescriptor.forFormat("csv")
-                        .option("ignore-parse-error", "true")
-                        .option("disable-quote-character", "true")
-                        .build())
-                .build());
-        buildTime = true;
-    }
+//    /**
+//     * helper function for UMikroaggregation
+//     */
+//    private void buildTimeTable() {
+//        if(buildTime)
+//            return;
+//        Schema newSchema = Schema.newBuilder()
+//                .fromSchema(schema)
+//                .columnByExpression("proc_time", "PROCTIME()")
+//                .build();
+//        tEnv.createTemporaryTable("procdata", TableDescriptor.forConnector("filesystem")
+//                .schema(newSchema)
+//                .option("path", filePath)
+//                .format(FormatDescriptor.forFormat("csv")
+//                        .option("ignore-parse-error", "true")
+//                        .option("disable-quote-character", "true")
+//                        .build())
+//                .build());
+//        buildTime = true;
+//    }
 
     //helper map function for shuffle, add row number in chronological order
     public class RowNumber extends ScalarFunction {
@@ -194,6 +194,15 @@ public class Anonymization {
                 .orderBy($("id"))
                 .dropColumns($("new_id"));
         return result;
+    }
+
+    public Table kAnonymity() {
+        //add columns cluster
+        //while
+            //aggFunc to find min dist
+            //merge two clusters
+        //the last values
+        //take all values in same cluster to 1 table and anonymize
     }
 
     public Table joinTables(Table t1, Table t2, String columnName1, String columnName2) {
