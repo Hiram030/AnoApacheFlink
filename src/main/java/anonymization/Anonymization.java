@@ -1,11 +1,18 @@
 package anonymization;
 
+import AggFunctions.FindClusterMean;
+import AggFunctions.FindMinDist;
 import MapFunctions.*;
 import common.Tree;
+import org.apache.flink.streaming.api.datastream.DataStream;
+import org.apache.flink.streaming.api.environment.StreamExecutionEnvironment;
 import org.apache.flink.table.api.*;
+import org.apache.flink.table.api.bridge.java.StreamTableEnvironment;
 import org.apache.flink.table.functions.ScalarFunction;
 
+import java.util.List;
 import java.util.Map;
+import java.util.stream.Collectors;
 
 import static org.apache.flink.table.api.Expressions.*;
 
@@ -16,6 +23,7 @@ public class Anonymization {
     private Table data;
     private TableEnvironment tEnv;
     private boolean buildTime = false;
+    private EnvironmentSettings settings;
 
     public Anonymization(String filePath, Schema schema) {
         this.schema = schema;
@@ -26,7 +34,7 @@ public class Anonymization {
      * convert data from csv to Table class, stored in parameter data
      */
     public void buildTable() {
-        EnvironmentSettings settings = EnvironmentSettings
+        settings = EnvironmentSettings
                 .newInstance()
                 .inBatchMode()
                 .build();
@@ -196,12 +204,33 @@ public class Anonymization {
         return result;
     }
 
-    public Table kAnonymity() {
+    public Table kAnonymity(int k) throws Exception {
+        StreamExecutionEnvironment env = StreamExecutionEnvironment.getExecutionEnvironment();
+        StreamTableEnvironment streamTableEnv = StreamTableEnvironment.create(env);
+//        List<String> columnNames = schema.getColumns().stream().map(Schema.UnresolvedColumn::getName).collect(Collectors.toList());
         //add columns cluster
-        //while
-            //aggFunc to find min dist
-            //merge two clusters
-        //the last values
+        Table originalData = data.select($("*"), call(new RowNumber(), $("id")).as("cluster"));
+        Table count = originalData.select($("*").count());
+        DataStream countds = streamTableEnv.toDataStream(count);
+        int n = (int) countds.executeAndCollect(1).get(0);
+        while (n>1) {
+            Table clusterMeanTable = originalData
+                    .groupBy($("cluster"))
+                    .aggregate(call(new FindClusterMean(), $("*")).as("mean"))
+                    .select($("cluster"), $("mean"));
+            Table minDist;
+            for(int i = 0; i < n-1; i++) {
+                Table minDistFrom = clusterMeanTable
+                        .aggregate(call(new FindMinDist(i), $("*")).as("minDist"))
+                        .select($("cluster"), $("minDist"));
+                minDist.union(minDistFrom);
+                //todo:select minDist <cluster1, cluster2>
+            }
+            //merge 2 cluster
+            originalData.join(minDist).where($("cluster").isEqual($("cluster2")));
+            //todo: map cluster to cluster 1
+            originalData.dropColumns($("cluster1"), $("cluster2"));
+        }
         //take all values in same cluster to 1 table and anonymize
     }
 
