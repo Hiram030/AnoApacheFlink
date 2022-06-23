@@ -1,6 +1,5 @@
 package anonymization;
 
-import AggFunctions.FindClusterMean;
 import AggFunctions.FindMinDist;
 import MapFunctions.*;
 import common.Tree;
@@ -204,35 +203,34 @@ public class Anonymization {
         return result;
     }
 
-    public Table kAnonymity(int k) throws Exception {
-        StreamExecutionEnvironment env = StreamExecutionEnvironment.getExecutionEnvironment();
-        StreamTableEnvironment streamTableEnv = StreamTableEnvironment.create(env);
-//        List<String> columnNames = schema.getColumns().stream().map(Schema.UnresolvedColumn::getName).collect(Collectors.toList());
-        //add columns cluster
-        Table originalData = data.select($("*"), call(new RowNumber(), $("id")).as("cluster"));
-        Table count = originalData.select($("*").count());
-        DataStream countds = streamTableEnv.toDataStream(count);
-        int n = (int) countds.executeAndCollect(1).get(0);
-        while (n>1) {
-            Table clusterMeanTable = originalData
-                    .groupBy($("cluster"))
-                    .aggregate(call(new FindClusterMean(), $("*")).as("mean"))
-                    .select($("cluster"), $("mean"));
-            Table minDist;
-            for(int i = 0; i < n-1; i++) {
-                Table minDistFrom = clusterMeanTable
-                        .aggregate(call(new FindMinDist(i), $("*")).as("minDist"))
-                        .select($("cluster"), $("minDist"));
-                minDist.union(minDistFrom);
-                //todo:select minDist <cluster1, cluster2>
-            }
-            //merge 2 cluster
-            originalData.join(minDist).where($("cluster").isEqual($("cluster2")));
-            //todo: map cluster to cluster 1
-            originalData.dropColumns($("cluster1"), $("cluster2"));
-        }
-        //take all values in same cluster to 1 table and anonymize
-    }
+//    public Table kAnonymity(int k) throws Exception {
+//        StreamExecutionEnvironment env = StreamExecutionEnvironment.getExecutionEnvironment();
+//        StreamTableEnvironment streamTableEnv = StreamTableEnvironment.create(env);
+//        //add columns cluster
+//        Table originalData = data.select($("*"), call(new RowNumber(), $("id")).as("cluster"));
+//        Table count = originalData.select($("*").count());
+//        DataStream countds = streamTableEnv.toDataStream(count);
+//        int n = (int) countds.executeAndCollect(1).get(0);
+//        while (n>1) {
+//            Table clusterMeanTable = originalData
+//                    .groupBy($("cluster"))
+//                    .aggregate(call(new FindClusterMean(), $("*")).as("mean"))
+//                    .select($("cluster"), $("mean"));
+//            Table minDist;
+//            for(int i = 0; i < n-1; i++) {
+//                Table minDistFrom = clusterMeanTable
+//                        .aggregate(call(new FindMinDist(i), $("*")).as("minDist"))
+//                        .select($("cluster"), $("minDist"));
+//                minDist.union(minDistFrom);
+//                //todo:select minDist <cluster1, cluster2>
+//            }
+//            //merge 2 cluster
+//            originalData.join(minDist).where($("cluster").isEqual($("cluster2")));
+//            //todo: map cluster to cluster 1
+//            originalData.dropColumns($("cluster1"), $("cluster2"));
+//        }
+//        //take all values in same cluster to 1 table and anonymize
+//    }
 
     public Table joinTables(Table t1, Table t2, String columnName1, String columnName2) {
         return t1
