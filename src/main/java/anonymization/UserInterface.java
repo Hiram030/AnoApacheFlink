@@ -11,8 +11,15 @@ import java.util.Scanner;
 public class UserInterface {
 
     Scanner cli;
-    String PATH;
-    Schema schema;
+    String PATH = "src/main/java/table/TrainingData.csv";
+    Schema schema = Schema.newBuilder()
+            .column("id", DataTypes.BIGINT())
+            .column("gender", DataTypes.STRING())
+            .column("age", DataTypes.INT())
+            .column("name", DataTypes.STRING())
+            .column("surname", DataTypes.STRING())
+            .column("residence", DataTypes.STRING())
+            .build();
 
     Anonymization anonymization;
     public UserInterface() throws Exception {
@@ -21,16 +28,10 @@ public class UserInterface {
         // String path = cli.next();
         // System.out.println("Please provide the columns, write finish to finish columns:");
 
-        PATH = "src/main/java/table/TrainingData.csv";
-        schema = Schema.newBuilder()
-                .column("id", DataTypes.BIGINT())
-                .column("gender", DataTypes.STRING())
-                .column("age", DataTypes.INT())
-                .column("name", DataTypes.STRING())
-                .column("surname", DataTypes.STRING())
-                .column("residence", DataTypes.STRING())
-                .build();
 
+
+        anonymization = new Anonymization(PATH, schema);
+        anonymization.buildTable();
 
         runUI();
     }
@@ -41,8 +42,6 @@ public class UserInterface {
     }
 
     public void runUI() throws Exception {
-        anonymization = new Anonymization(PATH, schema);
-        anonymization.buildTable();
         printTable();
 
         boolean exit = false;
@@ -125,7 +124,8 @@ public class UserInterface {
                 case "kAnonymity":
                     System.out.println("How big is k?");
                     int k = Integer.parseInt(cli.next());
-                    anonymization.kAnonymity(k).execute().print();
+                    //anonymization.kAnonymity(k).execute().print();
+                    break;
                 case "exit":
                     exit = true;
                     break;
