@@ -1,16 +1,12 @@
 package anonymization;
 
-import common.Node;
 import common.Tree;
 import org.apache.flink.table.api.DataTypes;
 import org.apache.flink.table.api.Schema;
 import org.apache.flink.table.api.Table;
-import org.jetbrains.annotations.NotNull;
-import org.jetbrains.annotations.Nullable;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 
-import java.io.IOException;
 import java.util.*;
 import java.util.stream.Collectors;
 
@@ -115,4 +111,8 @@ class AnonymizationTest {
         anonymization.UMicroaggregation("age", 5).execute().print();
     }
 
+    @Test
+    void kAnonymity() throws Exception {
+        anonymization.kAnonymity(4).execute().print();
+    }
 }
