@@ -155,8 +155,17 @@ public class Anonymization {
     public Table bucketize(String columnName, int step) {
         if (step <= 0)
             throw new IllegalArgumentException("Step must be greater than 0.");
-        return data.select($("*"), call(new Bucketizing(step), $(columnName)).as("new_"+columnName));
+        return data.select($("*"), call(new Bucketizing(), $(columnName), step).as("new_"+columnName));
+    }
 
+    public Table bucketize(String columnName, int[] steps) {
+        if (steps == null)
+            throw new IllegalArgumentException("Steps is null.");
+        for(int i = 0; i < steps.length - 1; i++) {
+            if(steps[i+1] <= steps[i])
+                throw new IllegalArgumentException("Steps is not sorted.");
+        }
+        return data.select($("*"), call(new Bucketizing(), $(columnName), steps).as("new_"+columnName));
     }
 
     public Table suppress(String columnName) {
