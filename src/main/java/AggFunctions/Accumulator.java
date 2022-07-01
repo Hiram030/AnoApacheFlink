@@ -1,8 +1,7 @@
 package AggFunctions;
 
 public class Accumulator {
-    public int counter = 0;
-    public boolean suppressionFlag = false; //false if all values are identical, true otherwise
-    public String string = null;
-    public double number = Double.MAX_VALUE;
+    public Long cluster1 = null;
+    public Long cluster2 = null;
+    public Double minDist = Double.MAX_VALUE;
 }

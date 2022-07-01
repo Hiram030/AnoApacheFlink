@@ -1,15 +1,22 @@
 package anonymization;
 
-import AggFunctions.FindDist;
+import AggFunctions.MinDist;
 import MapFunctions.*;
 import common.Tree;
+import org.apache.flink.connector.datagen.table.DataGenConnectorOptions;
+import org.apache.flink.shaded.curator5.org.apache.curator.framework.schema.SchemaBuilder;
+import org.apache.flink.table.annotation.DataTypeHint;
+import org.apache.flink.table.annotation.InputGroup;
 import org.apache.flink.table.api.*;
+import org.apache.flink.table.expressions.Expression;
 import org.apache.flink.table.functions.ScalarFunction;
+import org.apache.flink.table.types.DataType;
 import org.apache.flink.types.Row;
+import org.apache.flink.types.RowKind;
 import org.apache.flink.util.CloseableIterator;
 
-import java.util.List;
-import java.util.Map;
+import java.lang.reflect.Field;
+import java.util.*;
 import java.util.stream.Collectors;
 
 import static org.apache.flink.table.api.Expressions.*;
@@ -18,6 +25,8 @@ public class Anonymization {
 
     private final Schema schema;
     private final String filePath;
+    //todo: backup data
+    private Table originalData;
     private Table data;
     private TableEnvironment tEnv;
     private boolean buildTime = false;
@@ -86,9 +95,14 @@ public class Anonymization {
 //    }
 
     //helper map function for shuffle, add row number in chronological order
-    public class RowNumber extends ScalarFunction {
-        private int counter = 1;
-        public long eval(Long id) {
+    public static class RowNumber extends ScalarFunction {
+        private int counter;
+
+        public RowNumber(int counter) {
+            this.counter = counter;
+        }
+
+        public long eval(@DataTypeHint(inputGroup = InputGroup.ANY) Object value) {
             return counter++;
         }
     }
@@ -102,10 +116,10 @@ public class Anonymization {
         Table column1 = data
                 .select($(columnName).as("new"))
                 .orderBy(rand())
-                .select($("new"), call(new RowNumber(), $("new")).as("row_number1"));
+                .select($("new"), call(new RowNumber(1), $("new")).as("row_number1"));
         //add row number to original data
         Table column2 = data
-                .select($("*"), call(new RowNumber(), $(columnName)).as("row_number2"));
+                .select($("*"), call(new RowNumber(1), $(columnName)).as("row_number2"));
         //join 2 tables
         Table result = column2
                 .join(column1)
@@ -208,72 +222,102 @@ public class Anonymization {
      */
     public Table kAnonymity(int k) throws Exception {
         List<String> columnNames = schema.getColumns().stream().map(Schema.UnresolvedColumn::getName).collect(Collectors.toList());
-        //add columns cluster
-        Table originalData = data.select(
-                $("*"),
-                call(new RowNumber(), $("id")).as("cluster"));
-        //initialize inner distances with 0s
-        Table innerDists = originalData.select($("cluster"), call(new Fill(0)).as("dist"));
         //read number of rows and store in n
-        Table count = originalData.select($("id").count());
+        Table count = data.select($("id").count());
         long n = count.execute().collect().next().getFieldAs(0);
+        //build sink table
+        Schema.Builder builder = Schema.newBuilder().column("id", DataTypes.BIGINT());
+        for(String columnName : columnNames) {
+            if(columnName.equals("id"))
+                continue;
+            builder.column(columnName, DataTypes.STRING());
+        }
+        builder.column("size", DataTypes.DOUBLE());
+        tEnv.createTemporaryTable("Result", TableDescriptor.forConnector("print")
+                .schema(builder.build())
+                .build());
+
+        //add columns
+        Table clusters = data.select(
+                $("*"),
+                call(new Fill(1)).as("size"));
+        for (String columnName : columnNames) {
+            if(columnName.equals("id"))
+                continue;
+            clusters = clusters.addOrReplaceColumns(call(new ToString(), $(columnName)).as(columnName));
+        }
+        tEnv.createTemporaryView("clusters", clusters);
+
+        //transform to array
+        HashMap<Long, Row> hashMap = new HashMap<>((int)n);
+        CloseableIterator<Row> rows = clusters.execute().collect();
+        while (rows.hasNext()) {
+            Row row = rows.next();
+            hashMap.put(row.getFieldAs(0), row);
+        }
+
+        DataTypes.Field[] fields = new DataTypes.Field[columnNames.size()+1];
+        fields[0] = DataTypes.FIELD("id", DataTypes.BIGINT());
+        for(int i = 1; i < columnNames.size(); i++) {
+            fields[i] = DataTypes.FIELD(columnNames.get(i), DataTypes.STRING());
+        }
+        fields[columnNames.size()] = DataTypes.FIELD("size", DataTypes.DOUBLE());
+        DataType rowType = DataTypes.ROW(fields);
 
         while (n > 1) {
-            Table[] clusters = new Table[(int) n];
-            double minDist = Double.MAX_VALUE;
-            int first = 0, second = 0; // 2 cluster with minDist
-            for(int i = 0; i < n; i++) {
-                clusters[i] = originalData
-                        .where($("cluster").isEqual(i+1))
-                        .select($("*"))
-                        .dropColumns($("id"), $("cluster"));
+            //rename columns to join
+            Table clustersClone = clusters.renameColumns(
+                    $("size").as("size1"));
+            for (String columnName : columnNames) {
+                clustersClone = clustersClone.renameColumns($(columnName).as(columnName+"1"));
             }
-            //find minDist
-            for (int i = 0; i < n-1; i++) {
-                for(int j = i+1; j < n; j++) {
-                    Table temp = clusters[i].union(clusters[j]);
-                    double dist = 0;
-                    //find distances of each column
-                    for(String columnName : columnNames.subList(1, columnNames.size())) {
-                        Integer colDist =  temp
-                                .aggregate(call(new FindDist(), $(columnName)).as("dist"))
-                                .select($("dist"))
-                                .execute().collect().next().getFieldAs(0);
-                        dist += colDist;
-//                        Row row = temp.select($(columnName).count(), $(columnName).count().distinct())
-//                                .execute().collect().next();
-//                        if((long) row.getField(1) != 1) {
-//                            dist += (long) row.getField(0);
-//                        }
-                    }
-                    double innerDist1 = innerDists
-                            .where($("cluster").isEqual(i))
-                            .select($("dist"))
-                            .execute().collect().next().getFieldAs(0);
-                    double innerDist2 = innerDists
-                            .where($("cluster").isEqual(j))
-                            .select($("dist"))
-                            .execute().collect().next().getFieldAs(0);
-                    dist = dist - innerDist1 - innerDist2;
-                    if(dist < minDist) {
-                        minDist = dist;
-                        first = i;
-                        second = j;
-                    }
-                }
+            //find min dist
+            Table joined = clusters
+                    .join(clustersClone)
+                    .where($("id").isLess($("id1")));
+            Table dist = joined
+                    .select($("*"), call(new FindDist(), $("*")).as("dist"))
+                    .aggregate(call(new MinDist(), $("id"), $("id1"), $("dist")).as("first", "second"))
+                    .select($("first"), $("second"));
+            Row row = dist.execute().collect().next();
+            Long first = row.getFieldAs(0);
+            Long second = row.getFieldAs(1);
+            System.out.println(first + ", " +second);
+            double newSize = update(hashMap, first, second);
+            //update cluster
+            clusters = tEnv.fromValues(rowType, hashMap.values().toArray());
+            //if(a cluster more than k)
+            if(newSize >= k) {
+                hashMap.remove(first);
+                Table completeCluster = clusters.where($("id").isEqual(first));
+                completeCluster.executeInsert("Result");
+                clusters.minus(completeCluster);
             }
-            //merge 2 cluster
-            originalData = originalData
-                    .select($("*"), call(new UpdateClusters(first, second)).as("new_cluster"))
-                    .dropColumns($("cluster"))
-                    .renameColumns($("new_cluster").as("cluster"));
-            //todo:update innerdist
-//            Table newInnerDist = tEnv.fromValues(Row.of(first, minDist));
-//            innerDists = innerDists.minus(new)
-            //todo:if(a cluster more than k)
+
+
+            //update n
+            count = clusters.select($("id").count());
+            n = count.execute().collect().next().getFieldAs(0);
+            System.out.println(n);
         }
 //        //take all values in same cluster to 1 table and anonymize
-        return originalData;
+        return clusters;
+    }
+
+    //helper for k-anonymity, return the size of new cluster
+    private double update(HashMap<Long, Row> map, long first, long second) {
+        Row cluster1 = map.get(first);
+        Row cluster2 = map.get(second);
+        for(int i = 1; i < cluster1.getArity()-1; i++) {
+            if(!cluster1.getField(i).equals(cluster2.getField(i))) {
+                cluster1.setField(i, "****");
+            }
+        }
+        double totalSize = (Double) cluster1.getField(cluster1.getArity()-1) + (Double) cluster2.getField(cluster1.getArity()-1);
+        cluster1.setField(cluster1.getArity()-1, totalSize);
+        map.replace(first, cluster1);
+        map.remove(second);
+        return totalSize;
     }
 
     public Table joinTables(Table t1, Table t2, String columnName1, String columnName2) {
