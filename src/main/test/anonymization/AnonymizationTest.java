@@ -115,4 +115,17 @@ class AnonymizationTest {
     void kAnonymity() throws Exception {
         anonymization.kAnonymity(4).execute().print();
     }
-}
+
+    @Test
+    void conditionalSubstitute() {
+        Map<Integer, String> mapMale = new HashMap<>();
+        Map<Integer, String> mapFemale = new HashMap<>();
+        mapMale.put(24, "Adrew");
+        mapFemale.put(24, "Maria");
+        Map<String, Map<?, ?>> map = new HashMap<>();
+        map.put("M", mapMale);
+        map.put("F", mapFemale);
+        anonymization.conditionalSubstitute("age", "gender", map)
+                .execute().print();
+    }
+ }
