@@ -337,6 +337,8 @@ public class Anonymization {
 
     public Table getData() { return data;}
 
+
+
     /**
      * print table data
      */

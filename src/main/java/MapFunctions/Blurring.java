@@ -25,7 +25,7 @@ public class Blurring extends ScalarFunction {
             first.append(string.charAt(i));
         }
         for (int i = 0; i < end; i++) {
-            last.append(string.charAt(string.length() - 1 - i));
+            last.append(string.charAt(string.length()-end+i));
         }
         return first + "****" + last;
     }
