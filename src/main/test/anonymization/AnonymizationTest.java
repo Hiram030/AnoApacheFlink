@@ -50,7 +50,7 @@ class AnonymizationTest {
 
     @Test
     void blurring() {
-        anonymization.blurring("id")
+        anonymization.blurring("id", 2, 2)
                 .execute().print();
     }
 

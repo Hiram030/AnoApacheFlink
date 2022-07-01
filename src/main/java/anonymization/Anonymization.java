@@ -172,8 +172,8 @@ public class Anonymization {
         return data.select($("*"), call(new Suppression(), $(columnName)).as("new_"+columnName));
     }
 
-    public Table blurring(String columnName) {
-        return data.select($("*"), call(new Blurring(), $(columnName)).as("new_"+columnName));
+    public Table blurring(String columnName, int start, int end) {
+        return data.select($("*"), call(new Blurring(start, end), $(columnName)).as("new_"+columnName));
     }
 
     public Table tokenize(String columnName) {
