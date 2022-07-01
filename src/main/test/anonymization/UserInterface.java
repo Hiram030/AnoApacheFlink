@@ -72,10 +72,22 @@ public class UserInterface {
                         System.out.println("Which column do you want to bucketize?");
                         try {
                             String column = cli.next();
-                            System.out.println("How big is the bucket supposed to be?");
+                            System.out.println("How big is the bucket supposed to be? You can also provide the buckets by seperating them with a comma");
+                            String step = cli.next();
+                            String[] steps = step.split(",");
 
-                            int step = cli.nextInt();
-                            anonymization.bucketize(column, step).execute().print();
+                            if(steps.length>1){
+                                int[] stepsInt = new int[steps.length];
+                                for (int i = 0; i<steps.length; i++){
+                                    stepsInt[i] = Integer.parseInt(steps[i]);
+                                }
+                                anonymization.bucketize(column, stepsInt).execute().print();
+                            }else{
+                                anonymization.bucketize(column, Integer.parseInt(step)).execute().print();
+                            }
+                            break;
+
+
                         } catch (InputMismatchException e) {
                             System.out.println("ERROR: Please use integers as a step size.");
                         } catch (IllegalArgumentException e) {
@@ -90,7 +102,13 @@ public class UserInterface {
                         break;
                     case "blurring":
                         System.out.println("Which column do you want to blur?");
-                        anonymization.blurring(cli.next()).execute().print();
+                        String blurColumn = cli.next();
+                        System.out.println("How many characters should remain in the beginning");
+                        int amountOfFirstChars = cli.nextInt();
+                        System.out.println("How many characters should remain at the end?");
+                        int amountOfLastChars = cli.nextInt();
+
+                        anonymization.blurring(blurColumn, amountOfFirstChars, amountOfLastChars).execute().print();
                         break;
                     case "tokenize":
                         System.out.println("Which column do you want to tokenize?");
