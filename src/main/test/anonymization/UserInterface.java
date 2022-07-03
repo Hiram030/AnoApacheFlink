@@ -53,8 +53,7 @@ public class UserInterface {
                 switch (command) {
                     case "shuffle":
                         System.out.println("Which column do you want to shuffle?");
-                        anonymization.shuffle(cli.next());
-                        anonymization.getData().execute().print();
+                        anonymization.shuffle(cli.next()).execute().print();
 
                         break;
                     case "generalize":
@@ -149,7 +148,10 @@ public class UserInterface {
                     case "kAnonymity":
                         System.out.println("How big is k?");
                         int k = cli.nextInt();
-                        //anonymization.kAnonymity(k).execute().print();
+                        anonymization.kAnonymity(k).execute().print();
+                        break;
+                    case "reset":
+                        anonymization.resetData().execute().print();
                         break;
                     case "exit":
                         exit = true;

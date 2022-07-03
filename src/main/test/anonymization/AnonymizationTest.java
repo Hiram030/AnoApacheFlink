@@ -113,7 +113,7 @@ class AnonymizationTest {
 
     @Test
     void kAnonymity() throws Exception {
-        anonymization.kAnonymity(4).execute().print();
+        anonymization.kAnonymity(3).execute().print();
     }
 
     @Test
