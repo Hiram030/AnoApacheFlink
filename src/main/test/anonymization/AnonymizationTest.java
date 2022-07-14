@@ -4,31 +4,35 @@ import common.Tree;
 import org.apache.flink.table.api.DataTypes;
 import org.apache.flink.table.api.Schema;
 import org.apache.flink.table.api.Table;
+import org.junit.Before;
+import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 
 import java.util.*;
-import java.util.stream.Collectors;
+import java.util.concurrent.TimeUnit;
 
 import static org.apache.flink.table.api.Expressions.$;
 
 class AnonymizationTest {
 
-    String FILE_PATH = "src/main/java/table/TrainingData.csv";
+    String FILE_PATH = "src/main/test/anonymization/patients-500.csv";
     Schema schema = Schema.newBuilder()
             .column("id", DataTypes.BIGINT())
             .column("gender", DataTypes.STRING())
             .column("age", DataTypes.INT())
-            .column("name", DataTypes.STRING())
-            .column("surname", DataTypes.STRING())
             .column("residence", DataTypes.STRING())
+            .column("time", DataTypes.STRING())
+            .column("empty", DataTypes.STRING())
             .build();
     Anonymization anonymization;
+    long startTime;
 
     @BeforeEach
     public void init() {
         anonymization = new Anonymization(FILE_PATH, schema);
         anonymization.buildTable();
+        startTime = System.currentTimeMillis();
     }
 
     @Test
@@ -71,18 +75,7 @@ class AnonymizationTest {
     @Test
     void bucketize() {
         Table result = anonymization.bucketize("age", 5);
-        //move new_age and age side by side
-        List<String> columns = schema.getColumns()
-                .stream().map(Schema.UnresolvedColumn::getName)
-                .collect(Collectors.toList());
-        result.select($(columns.get(0)),
-                        $(columns.get(1)),
-                        $(columns.get(2)),
-                        $("new_age"),
-                        $(columns.get(3)),
-                        $(columns.get(4)),
-                        $(columns.get(5)))
-                .execute().print();
+        result.execute().print();
     }
 
     @Test
@@ -113,7 +106,21 @@ class AnonymizationTest {
 
     @Test
     void kAnonymity() throws Exception {
-        anonymization.kAnonymity(3).execute().print();
+        anonymization.kAnonymity(3);
+    }
+
+    @Test
+    void kAnonymity1() throws Exception {
+        List<String> columns = new LinkedList<>();
+        columns.add("time");
+        anonymization.kAnonymity(3, columns);
+    }
+    @Test
+    void kAnonymity2() throws Exception {
+        List<String> columns = new LinkedList<>();
+        columns.add("time");
+        columns.add("gender");
+        anonymization.kAnonymity(3, columns);
     }
 
     @Test
@@ -127,5 +134,10 @@ class AnonymizationTest {
         map.put("F", mapFemale);
         anonymization.conditionalSubstitute("age", "gender", map)
                 .execute().print();
+    }
+
+    @AfterEach
+    public void endTime() {
+        System.out.println(System.currentTimeMillis() - startTime);
     }
  }

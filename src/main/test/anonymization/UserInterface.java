@@ -24,7 +24,7 @@ public class UserInterface {
             .column("age", DataTypes.INT())
             .column("name", DataTypes.STRING())
             .column("surname", DataTypes.STRING())
-            .column("residence", DataTypes.STRING())
+            .column("residence", DataTypes.INT())
             .build();
 
     Anonymization anonymization;
@@ -148,7 +148,7 @@ public class UserInterface {
                     case "kAnonymity":
                         System.out.println("How big is k?");
                         int k = cli.nextInt();
-                        anonymization.kAnonymity(k).execute().print();
+                        anonymization.kAnonymity(k);
                         break;
                     case "reset":
                         anonymization.resetData().execute().print();

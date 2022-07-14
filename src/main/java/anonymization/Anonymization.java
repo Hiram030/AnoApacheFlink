@@ -1,21 +1,15 @@
 package anonymization;
 
-import AggFunctions.MinDist;
 import MapFunctions.*;
 import common.Tree;
-import org.apache.flink.connector.datagen.table.DataGenConnectorOptions;
-import org.apache.flink.shaded.curator5.org.apache.curator.framework.schema.SchemaBuilder;
 import org.apache.flink.table.annotation.DataTypeHint;
 import org.apache.flink.table.annotation.InputGroup;
 import org.apache.flink.table.api.*;
-import org.apache.flink.table.expressions.Expression;
 import org.apache.flink.table.functions.ScalarFunction;
 import org.apache.flink.table.types.DataType;
 import org.apache.flink.types.Row;
-import org.apache.flink.types.RowKind;
 import org.apache.flink.util.CloseableIterator;
 
-import java.lang.reflect.Field;
 import java.util.*;
 import java.util.stream.Collectors;
 
@@ -60,40 +54,24 @@ public class Anonymization {
                     .option("disable-quote-character", "true")
                     .build())
             .build());
+
         //sink
-//        tEnv.createTemporaryTable("output", TableDescriptor.forConnector("filesystem")
-//                .schema(schema)
-//                .option("path", "output")
-//                .format(FormatDescriptor.forFormat("csv")
-//                        .option("field-delimiter", ",")
-//                        .build())
-//                .build());
+        List<String> columnNames = schema.getColumns().stream().map(Schema.UnresolvedColumn::getName).collect(Collectors.toList());
+        Schema.Builder builder = Schema.newBuilder();
+        for (String columnName : columnNames) {
+            if(Objects.equals(columnName, "id"))
+                continue;
+            builder.column(columnName, DataTypes.STRING());
+        }
+        Schema sinkSchema = builder.column("size", DataTypes.DOUBLE()).build();
+        tEnv.createTemporaryTable("Result", TableDescriptor.forConnector("print")
+                .schema(sinkSchema)
+                .build());
 
         //get table and add id column
         data = tEnv.from("data").select($("*"));
         originalData = data;
     }
-
-//    /**
-//     * helper function for UMikroaggregation
-//     */
-//    private void buildTimeTable() {
-//        if(buildTime)
-//            return;
-//        Schema newSchema = Schema.newBuilder()
-//                .fromSchema(schema)
-//                .columnByExpression("proc_time", "PROCTIME()")
-//                .build();
-//        tEnv.createTemporaryTable("procdata", TableDescriptor.forConnector("filesystem")
-//                .schema(newSchema)
-//                .option("path", filePath)
-//                .format(FormatDescriptor.forFormat("csv")
-//                        .option("ignore-parse-error", "true")
-//                        .option("disable-quote-character", "true")
-//                        .build())
-//                .build());
-//        buildTime = true;
-//    }
 
     //helper map function for shuffle, add row number in chronological order
     public static class RowNumber extends ScalarFunction {
@@ -242,14 +220,22 @@ public class Anonymization {
 
     /**
      * perform k-anonymity algorithm on data
-     * @param columnNames names of columns that are not to be anonymized
      * @return
      */
-    public Table kAnonymity(int k) {
-        return kAnonymity(data, k);
+    public void kAnonymity(int k) {
+        kAnonymity(data, k);
     }
 
-    public Table kAnonymity(Table table, int k) {
+    /**
+     *
+     * @param k
+     * @param columnNames list of columns that will not be suppressed
+     */
+    public void kAnonymity(int k, List<String> columnNames) {
+        kAnonymity(data, k, columnNames);
+    }
+
+    private void kAnonymity(Table table, int k) {
         List<String> columnNames = schema.getColumns().stream().map(Schema.UnresolvedColumn::getName).collect(Collectors.toList());
         //read number of rows and store in n
         Table count = table.select($("id").count());
@@ -287,23 +273,44 @@ public class Anonymization {
         DataType rowType = DataTypes.ROW(fields);
 
         while (n > 1) {
-            //rename columns to join
-            Table clustersClone = clusters.renameColumns(
-                    $("size").as("size1"));
-            for (String columnName : columnNames) {
-                clustersClone = clustersClone.renameColumns($(columnName).as(columnName+"1"));
+//            //rename columns to join
+//            Table clustersClone = clusters.renameColumns(
+//                    $("size").as("size1"));
+//            for (String columnName : columnNames) {
+//                clustersClone = clustersClone.renameColumns($(columnName).as(columnName+"1"));
+//            }
+//            //find min dist
+//            Table joined = clusters
+//                    .join(clustersClone)
+//                    .where($("id").isLess($("id1")));
+//            Table dist = joined
+//                    .select($("*"), call(new FindDist(), $("*")).as("dist"))
+//                    .aggregate(call(new MinDist(), $("id"), $("id1"), $("dist")).as("first", "second"))
+//                    .select($("first"), $("second"));
+//            Row row = dist.execute().collect().next();
+//            Long first = row.getFieldAs(0);
+//            Long second = row.getFieldAs(1);
+//            totalClustering += System.currentTimeMillis() - iterationStartCluster;
+
+            Collection<Row> temp = hashMap.values();
+            Row[] values = new Row[temp.size()];
+            int l = 0;
+            for(Row row: temp) {
+                values[l] = row;
+                l++;
             }
-            //find min dist
-            Table joined = clusters
-                    .join(clustersClone)
-                    .where($("id").isLess($("id1")));
-            Table dist = joined
-                    .select($("*"), call(new FindDist(), $("*")).as("dist"))
-                    .aggregate(call(new MinDist(), $("id"), $("id1"), $("dist")).as("first", "second"))
-                    .select($("first"), $("second"));
-            Row row = dist.execute().collect().next();
-            Long first = row.getFieldAs(0);
-            Long second = row.getFieldAs(1);
+            double minDist = Double.MAX_VALUE;
+            long first = -1, second = -1;
+            for(int i = 0; i < values.length-1; i++) {
+                for(int j = i+1; j < values.length; j++) {
+                    double dist = dist(values[i], values[j]);
+                    if(dist < minDist) {
+                        minDist = dist;
+                        first = values[i].getFieldAs(0);
+                        second = values[j].getFieldAs(0);
+                    }
+                }
+            }
             Row cluster1 = hashMap.get(first);
             Row cluster2 = hashMap.get(second);
             double newSize = update(cluster1, cluster2);
@@ -316,8 +323,8 @@ public class Anonymization {
                 n--;
             }
 
-            //update cluster
-            clusters = tEnv.fromValues(rowType, hashMap.values().toArray());
+//            //update cluster
+//            clusters = tEnv.fromValues(rowType, hashMap.values().toArray());
             //update n
             n--;
         }
@@ -340,45 +347,33 @@ public class Anonymization {
             }
             resultList.add(mergeCluster);
         }
+        //print result
         Table result = tEnv.fromValues(rowType, resultList).dropColumns($("id"));
-//        //take all values in same cluster to 1 table and anonymize
-        return result;
+        result.executeInsert("Result");
     }
 
-    public Table kAnonymity(int k, String... intactColumnNames) {
-        List<String> columnNames = schema.getColumns().stream().map(Schema.UnresolvedColumn::getName).collect(Collectors.toList());
-
-        //table sink
-        Schema.Builder builder = Schema.newBuilder();
-        for (String columnName : columnNames) {
-            if(Objects.equals(columnName, "id"))
-                continue;
-            builder.column(columnName, DataTypes.STRING());
+    private void kAnonymity(Table table, int k, List<String> columnNames) {
+        if(columnNames.isEmpty()) {
+            kAnonymity(table, k);
+            return;
         }
-        Schema schema = builder.column("size", DataTypes.DOUBLE()).build();
-        tEnv.createTemporaryTable("Result", TableDescriptor.forConnector("datagen")
-                .schema(schema)
-                .option("number-of-rows", "0")
-                .build());
-        Table result = tEnv.from("Result");
-
-        ApiExpression[] intactColumns = new ApiExpression[intactColumnNames.length];
-        for (int i = 0; i < intactColumnNames.length; i++) {
-            intactColumns[i] = $(intactColumnNames[i]);
-        }
-        //get all values of intactcolumns
-        CloseableIterator<Row> temp = data.groupBy(intactColumns).select(intactColumns).execute().collect();
+        String column = columnNames.remove(0);
+        //get all different values values
+        CloseableIterator<Row> temp = table
+                .groupBy($(column))
+                .select($(column), $(column).count().as("count"))
+                .execute().collect();
         while (temp.hasNext()) {
             Row row = temp.next();
-            Table table = data;
-            //group table based on intactcolumns
-            for (int i = 0; i < row.getArity(); i++) {
-                table = table.where(intactColumns[i].isEqual(row.getField(i)));
+            //if table too small
+            if((long)row.getFieldAs(1) < k) {
+                kAnonymity(table, k);
+                return;
             }
-            Table iRes = kAnonymity(table, k);
-            result = result.union(iRes);
+            //continue dividing
+            Table smallTable = table.where($(column).isEqual(row.getFieldAs(0)));
+            kAnonymity(smallTable, k, columnNames);
         }
-        return result;
     }
 
     //helper for k-anonymity, retruns distance between two rows
@@ -424,8 +419,6 @@ public class Anonymization {
     }
 
     public Table getData() { return data;}
-
-
 
     /**
      * print table data
