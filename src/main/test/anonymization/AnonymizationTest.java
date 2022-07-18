@@ -1,5 +1,6 @@
 package anonymization;
 
+import common.MapReader;
 import common.Tree;
 import org.apache.flink.table.api.DataTypes;
 import org.apache.flink.table.api.Schema;
@@ -9,6 +10,7 @@ import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 
+import java.io.IOException;
 import java.util.*;
 import java.util.concurrent.TimeUnit;
 
@@ -84,10 +86,8 @@ class AnonymizationTest {
     }
 
     @Test
-    void substitute() {
-        Map<String, String> map = new HashMap<>();
-        map.put("M", "F");
-        map.put("F", "M");
+    void substitute() throws IOException {
+        Map<String, String> map = MapReader.read("maps/gender.txt");
         anonymization.substitute("gender", map).execute().print();
     }
     @Test

@@ -1,0 +1,2 @@
+id,gender,age,name,surname,residence
+BIGINT,STRING,INT,STRING,STRING,STRING

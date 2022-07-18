@@ -1,5 +1,6 @@
 package anonymization;
 
+import common.MapReader;
 import common.Tree;
 import org.apache.flink.table.api.DataTypes;
 import org.apache.flink.table.api.Schema;
@@ -113,10 +114,10 @@ public class FlinkJob {
                     break;
                 case "substitute":
                     //todo
-                    Map<String, String> map = new HashMap<>();
-                    map.put("M", "F");
-                    map.put("F", "M");
-                    anonymization.substitute("gender", map);
+                    String column = opArgs[1];
+                    String mapFile = opArgs[2];
+                    Map<String, String> map = MapReader.read(mapFile);
+                    anonymization.substitute(column, map);
                     break;
                 case "conditionalSubstitute":
                     //todo
